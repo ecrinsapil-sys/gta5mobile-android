@@ -136,6 +136,9 @@ public final class LauncherActivity extends Activity {
     private final AtomicBoolean nativeLoaded = new AtomicBoolean();
     private final AtomicReference<Exception> nativeFailure = new AtomicReference<>();
     private boolean firstResume = true;
+    // The folder the picker resolved to when it turned out to hold no game, so the
+    // message can name it rather than leaving the user to guess.
+    private String folderTried;
     private TextView status;
     private TextView savesStatus;
     private Button play, playEngine, importButton, clearFolderButton, grantAccessButton;
@@ -148,6 +151,15 @@ public final class LauncherActivity extends Activity {
     private TextView sensitivityLabel;
     private JSONObject settings;
     private boolean importing;
+
+    // JSONObject.put and remove declare a checked JSONException. Every key here is a
+    // plain string literal that cannot fail in practice, so the exception is handled
+    // once in these two helpers instead of at each of the two dozen call sites.
+    private void set(String key, Object value) {
+        try { settings.put(key, value); } catch (Exception e) { error(e); }
+    }
+
+    private void unset(String key) { settings.remove(key); }
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -191,10 +203,14 @@ public final class LauncherActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            // DocumentsUI reopens wherever it was last used unless it is told where
+            // to start, so the default game folder is offered explicitly.
             intent.putExtra("android.provider.extra.INITIAL_URI", folderUri(DEFAULT_GAME_FOLDER));
             startActivityForResult(intent, PICK_FOLDER);
         });
         column.addView(folderButton);
+        // The release instructions name this folder, so offer it directly rather
+        // than making the user find it in the system tree.
         Button defaultFolderButton = new Button(this);
         defaultFolderButton.setText("Use " + DEFAULT_GAME_FOLDER);
         defaultFolderButton.setOnClickListener(v -> useFolder(DEFAULT_GAME_FOLDER));
@@ -203,7 +219,7 @@ public final class LauncherActivity extends Activity {
         column.addView(folderStatus);
         clearFolderButton = new Button(this);
         clearFolderButton.setText("Go back to the imported copy");
-        clearFolderButton.setOnClickListener(v -> { settings.remove("game_folder_uri"); settings.remove("game_folder_path"); saveSettings(); ready(); });
+        clearFolderButton.setOnClickListener(v -> { unset("game_folder_uri"); unset("game_folder_path"); saveSettings(); ready(); });
         column.addView(clearFolderButton);
         grantAccessButton = new Button(this);
         grantAccessButton.setText("Grant file access");
@@ -259,8 +275,8 @@ public final class LauncherActivity extends Activity {
                 : "Cannot read " + path + ". Grant file access below, or import a ZIP.");
             return;
         }
-        settings.remove("game_folder_uri");
-        settings.put("game_folder_path", root);
+        unset("game_folder_uri");
+        set("game_folder_path", root);
         saveSettings();
         ready();
     }
@@ -309,7 +325,9 @@ public final class LauncherActivity extends Activity {
             boolean pickedSomething = !settings.optString("game_folder_uri", "").isEmpty()
                 || !settings.optString("game_folder_path", "").isEmpty();
             if (folder == null) {
-                folderStatus.setText(pickedSomething
+                folderStatus.setText(folderTried != null
+                    ? "No game data in " + folderTried + " - expected data/ and b/<build>/ inside it."
+                    : pickedSomething
                     ? "That folder cannot be read. Grant file access below, or pick another folder."
                     : "No game data yet. Import a ZIP, or pick a folder that holds data/ and b/.");
                 clearFolderButton.setVisibility(pickedSomething ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -329,7 +347,7 @@ public final class LauncherActivity extends Activity {
                 folderStatus.setText("Game folder: " + folder);
                 clearFolderButton.setVisibility(android.view.View.VISIBLE);
                 if (!folder.equals(settings.optString("game_folder_path", ""))) {
-                    settings.put("game_folder_path", folder);
+                    set("game_folder_path", folder);
                     saveSettings();
                 }
             }
@@ -358,6 +376,7 @@ public final class LauncherActivity extends Activity {
                 if (base != null) {
                     String root = gameRoot(base);
                     if (root != null) return root;
+                    folderTried = base;
                 }
             } catch (Exception ignored) {
                 // Fall through to the path resolved earlier.
@@ -467,8 +486,9 @@ public final class LauncherActivity extends Activity {
                 status.setText("That location has no filesystem path (an SD card, a cloud provider, or a ZIP opened in place). Copy the game into internal storage and pick it there.");
                 return;
             }
-            settings.put("game_folder_uri", tree.toString());
-            settings.put("game_folder_path", path);
+            folderTried = null;
+            set("game_folder_uri", tree.toString());
+            set("game_folder_path", path);
             saveSettings();
             ready();
             return;
