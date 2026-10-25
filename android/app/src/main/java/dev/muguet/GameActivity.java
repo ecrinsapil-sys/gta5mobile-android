@@ -1,6 +1,8 @@
 package dev.muguet;
 
 import android.app.NativeActivity;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -40,10 +42,12 @@ public final class GameActivity extends NativeActivity implements InputManagerCo
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        applyImmersive();
         getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        controls = new TouchControls(this, LookSensitivity.fromConfig(new File(getFilesDir(), "config.json")));
+        // The HUD geometry and its key bindings come from touch_layout.json, which
+        // the launcher writes.
+        TouchLayout layout = TouchLayout.load(this);
+        controls = new TouchControls(this, layout);
         status = new TextView(this);
         status.setTextColor(0xffffffff); status.setBackgroundColor(0xb0000000); status.setTextSize(16); status.setPadding(16, 8, 16, 8);
         status.setText(statusMessage);
@@ -56,6 +60,22 @@ public final class GameActivity extends NativeActivity implements InputManagerCo
         // activity window and still forwards keys/touch to the game where the HUD
         // does not consume them. No overlay permission is required for a sub-window.
         attachHud();
+    }
+
+    // Immersive full screen. The legacy setSystemUiVisibility flags this used are
+    // ignored from Android 11 on, which is why the navigation bar stayed visible on
+    // modern devices; WindowInsetsController is the supported call.
+    private void applyImmersive() {
+        View decor = getWindow().getDecorView();
+        if (Build.VERSION.SDK_INT >= 30) {
+            decor.getWindowInsetsController().setSystemBarsBehavior(
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            decor.getWindowInsetsController().hide(WindowInsets.Type.systemBars());
+        } else {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
     }
 
     private FrameLayout overlay;
@@ -182,6 +202,9 @@ public final class GameActivity extends NativeActivity implements InputManagerCo
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
         this.focused = focused;
+        // Coming back from the launcher is when a control edit should take effect,
+        // so the layout is re-read here rather than only at startup.
+        if (focused && controls != null) { controls.reloadLayout(TouchLayout.load(this)); applyImmersive(); }
         if (!focused && controls != null) clearInput();
     }
     @Override protected void onDestroy() {
@@ -281,7 +304,7 @@ public final class GameActivity extends NativeActivity implements InputManagerCo
                 if (down(KeyEvent.KEYCODE_BUTTON_R1)) keys.add(inCar ? "Space" : "KeyQ");
                 if (down(KeyEvent.KEYCODE_BUTTON_THUMBR)) keys.add("KeyC");
                 if (down(KeyEvent.KEYCODE_BUTTON_START)) keys.add("Escape");
-                if (down(KeyEvent.KEYCODE_BUTTON_SELECT)) keys.add("KeyV");
+                if (down(KeyEvent.KEYCODE_BUTTON_SELECT)) keys.add(controls.camKey());
                 if (hy < -0.5 || down(KeyEvent.KEYCODE_DPAD_UP)) keys.add("ArrowUp");
                 if (hy > 0.5 || down(KeyEvent.KEYCODE_DPAD_DOWN)) keys.add("ArrowDown");
                 if (hx < -0.5 || down(KeyEvent.KEYCODE_DPAD_LEFT)) keys.add("ArrowLeft");
