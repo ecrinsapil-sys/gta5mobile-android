@@ -5,6 +5,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +16,8 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -77,10 +80,7 @@ public final class EngineActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().getDecorView().setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        applyImmersive();
         getWindow().getAttributes().layoutInDisplayCutoutMode =
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 
@@ -102,7 +102,8 @@ public final class EngineActivity extends Activity {
         root.addView(surface, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        controls = new TouchControls(this, LookSensitivity.fromConfig(new File(getFilesDir(), "config.json")));
+        // Same editable layout the wasmtime path draws, from touch_layout.json.
+        controls = new TouchControls(this, TouchLayout.load(this));
         controls.setVisibility(View.VISIBLE);
         root.addView(controls, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -136,6 +137,21 @@ public final class EngineActivity extends Activity {
             return;
         }
         startEngine();
+    }
+
+    // Immersive full screen. The legacy setSystemUiVisibility flags this used are
+    // ignored from Android 11 on, so the navigation bar stayed on screen.
+    private void applyImmersive() {
+        View decor = getWindow().getDecorView();
+        if (Build.VERSION.SDK_INT >= 30) {
+            decor.getWindowInsetsController().setSystemBarsBehavior(
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            decor.getWindowInsetsController().hide(WindowInsets.Type.systemBars());
+        } else {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
     }
 
     // The engine core is only in the builds that ship it. Loading it can fail
@@ -201,7 +217,7 @@ public final class EngineActivity extends Activity {
             File dir = new File(picked);
             if (new File(dir, "data/manifest.json").isFile()) return dir;
         }
-        return new File(getFilesDir(), "game");
+        return StoragePaths.gameDir(this);
     }
 
     private JSONObject readConfig() {
@@ -315,7 +331,7 @@ public final class EngineActivity extends Activity {
             if (down(KeyEvent.KEYCODE_BUTTON_L1)) keys.add("Tab");
             if (down(KeyEvent.KEYCODE_BUTTON_R1)) keys.add("KeyQ");
             if (down(KeyEvent.KEYCODE_BUTTON_START)) keys.add("Escape");
-            if (down(KeyEvent.KEYCODE_BUTTON_SELECT)) keys.add("KeyV");
+            if (down(KeyEvent.KEYCODE_BUTTON_SELECT)) keys.add(controls != null ? controls.camKey() : "KeyV");
             accLookX += rx * 320; accLookY += ry * 320;
 
             // Consume the accumulated look delta each pump.
@@ -390,6 +406,9 @@ public final class EngineActivity extends Activity {
     // --- lifecycle -----------------------------------------------------------
     @Override protected void onResume() {
         super.onResume(); running = true; devices.start(); handler.post(tick);
+        // A control edit made in the launcher applies on the way back in.
+        if (controls != null) controls.reloadLayout(TouchLayout.load(this));
+        applyImmersive();
     }
     @Override protected void onPause() {
         running = false; handler.removeCallbacks(tick); devices.stop(); clearInput();
