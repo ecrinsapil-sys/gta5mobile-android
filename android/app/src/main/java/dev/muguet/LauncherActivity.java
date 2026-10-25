@@ -29,8 +29,8 @@ public final class LauncherActivity extends Activity {
     private static final int PICK_FOLDER = 3;
     private static final int PICK_SAVE_ZIP = 4;
     private static final int PICK_SAVE_LOG = 6;
-    // The folder the release instructions point at, offered as the picker's
-    // starting point so nobody has to hunt for it in the tree.
+    // The folder the release instructions point at. Offered as the picker's
+    // starting point and as a one-tap button, so nobody has to hunt for it.
     private static final String DEFAULT_GAME_FOLDER = "/storage/emulated/0/GTA5B";
     private static final String DEFAULT_MAGNET =
         "magnet:?xt=urn:btih:60a2d95f23154e4f7c75a965307133c24d9c7178&dn=GrandV-assets"
@@ -61,42 +61,7 @@ public final class LauncherActivity extends Activity {
         + "&tr=udp%3A%2F%2Fmail.segso.net%3A6969%2Fannounce"
         + "&tr=https%3A%2F%2Ftracker.pmman.tech%3A443%2Fannounce"
         + "&tr=https%3A%2F%2Fht.therarbg.to%3A443%2Fannounce"
-        + "&tr=http%3A%2F%2Fbittorrent-tracker.e-n-c-r-y-p-t.net%3A1337%2Fannounce"
-        + "&tr=udp%3A%2F%2Fretracker01-msk-virt.corbina.net%3A80%2Fannounce"
-        + "&tr=udp%3A%2F%2Ft.overflow.biz%3A6969%2Fannounce"
-        + "&tr=http%3A%2F%2Ft.overflow.biz%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.004430.xyz%3A1337%2Fannounce"
-        + "&tr=https%3A%2F%2Ftracker.nekomi.cn%3A443%2Fannounce"
-        + "&tr=https%3A%2F%2F004430.xyz%3A443%2Fannounce"
-        + "&tr=http%3A%2F%2F004430.xyz%3A80%2Fannounce"
-        + "&tr=udp%3A%2F%2Fipv4announce.sktorrent.eu%3A6969%2Fannounce"
-        + "&tr=http%3A%2F%2Fipv4announce.sktorrent.eu%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Fevan.im%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftr4ck3r.duckdns.org%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Fns575949.ip-51-222-82.net%3A6969%2Fannounce"
-        + "&tr=https%3A%2F%2Ftr.nyacat.pw%3A443%2Fannounce"
-        + "&tr=http%3A%2F%2Ftracker.mywaifu.best%3A6969%2Fannounce"
-        + "&tr=http%3A%2F%2Ftr.nyacat.pw%3A80%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.wildkat.net%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Fopen.ftorrent.com%3A443%2Fannounce"
-        + "&tr=udp%3A%2F%2Fmartin-gebhardt.eu%3A25%2Fannounce"
-        + "&tr=https%3A%2F%2Ftracker.7471.top%3A443%2Fannounce"
-        + "&tr=http%3A%2F%2Ftracker.waaa.moe%3A6969%2Fannounce"
-        + "&tr=http%3A%2F%2Ftracker.dhitechnical.com%3A6969%2Fannounce"
-        + "&tr=http%3A%2F%2Fopen.tracker.cl%3A1337%2Fannounce"
-        + "&tr=udp%3A%2F%2Fadmin.52ywp.com%3A6969%2Fannounce"
-        + "&tr=https%3A%2F%2Ftracker.zhuqiy.com%3A443%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.aruku.ovh%3A8081%2Fannounce"
-        + "&tr=https%3A%2F%2Ftracker.foreverpirates.co%3A443%2Fannounce"
-        + "&tr=https%3A%2F%2Fopen.ftorrent.com%3A443%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.torrents.observer%3A80%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.nyaa.net%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.k.vu%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Ftracker.cn.nyaa.net%3A6969%2Fannounce"
-        + "&tr=udp%3A%2F%2Fkolankoalastree.newtrackon.co.nz%3A1337%2Fannounce"
-        + "&tr=http%3A%2F%2Ftracker.zhuqiy.dgj055.icu%3A80%2Fannounce"
-        + "&tr=https%3A%2F%2Ft.213891.xyz%3A443%2Fannounce"
-        + "&tr=http%3A%2F%2F1337.abcvg.info%3A80%2Fannounce";
+        + "&tr=udp%3A%2F%2Fretracker01-msk-virt.corbina.net%3A80%2Fannounce";
     // Every graphics knob the web port exposes, in the same order, with the same
     // choices, taken from graphics_settings.js on the game data. Columns are
     // label, engine flag, then the engine's own values. DISPLAY below renames
@@ -177,158 +142,274 @@ public final class LauncherActivity extends Activity {
         String base = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
         String docId = path.startsWith(base + "/") ? "primary:" + path.substring(base.length() + 1) : "primary:";
         return android.provider.DocumentsContract.buildTreeDocumentUri(
-            "com.android.external.storage.documents".replace(".storage.", "."), docId);
+            "com.android.externalstorage.documents", docId);
     }
 
-    private static native boolean nativePrepare(String directory);
-    private native void nativeImport(String archive);
-    // Returns the folder inside the picked one that holds the game (data/ and
-    // b/), or null when there is none.
-    private native String nativeGameRoot(String path);
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
-    // The native library is around 18 MB and takes roughly a second to load, so it
-    // is loaded on the worker instead of a static initializer: the launcher can draw
-    // immediately, and every native call waits for the load to finish. The worker is
-    // single-threaded, so a later import is still queued behind this one.
-    private final AtomicBoolean loadingNative = new AtomicBoolean();
-    private final AtomicBoolean nativeLoaded = new AtomicBoolean();
-    private final AtomicReference<Exception> nativeFailure = new AtomicReference<>();
-    private boolean firstResume = true;
-    // Set when the picked folder was readable but held no game, so the message can
-    // name the folder instead of leaving the user to guess which one was tried.
-    private String missingFolder;
-    private TextView status;
-    private TextView savesStatus;
-    private Button play, playEngine, importButton, clearFolderButton, grantAccessButton;
-    private TextView folderStatus;
-    private ProgressBar progress;
-    private Spinner mode, heap;
-    private EditText scale, name, magnetField, relayUrl, relayRoom, relayKey;
-    private CheckBox mute, multiplayer, cpuBc, softwareClip;
-    private SeekBar sensitivity;
-    private TextView sensitivityLabel;
-    private JSONObject settings;
-    private boolean importing;
-
-    @Override public void onCreate(Bundle saved) {
-        super.onCreate(saved);
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        int padding = (int) (24 * getResources().getDisplayMetrics().density);
-        column.setPadding(padding, padding, padding, padding);
-        scroll.addView(column);
-        setContentView(scroll);
+    private void buildGraphics(LinearLayout column) {
         TextView title = new TextView(this);
-        title.setText("Grand V Android");
-        title.setTextSize(24);
+        title.setText("Graphics");
+        title.setTextSize(18);
         column.addView(title);
-        TextView warning = new TextView(this);
-        warning.setText("ARM64 / Android 10+ / Vulkan. A high-end phone with 8–12 GB RAM is recommended, not a guarantee of compatibility. Supply your own web-port data: import a ZIP, or point the app at a folder that already holds data/ and b/<build>/ with game.wasm and shaders inside. A normal PC installation is not enough. First launch compiles the game and may take several minutes.");
-        column.addView(warning);
-        status = new TextView(this);
-        column.addView(status);
-        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setMax(1000);
-        column.addView(progress);
-        // Game data comes from the user's own files: either a ZIP to extract or a folder
-        // to use where it lies. The app never fetches game data from any server,
-        // which keeps this project clear of mirroring Rockstar's content.
-        importButton = new Button(this);
-        importButton.setText("Import game ZIP");
-        importButton.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("*/*");
-            startActivityForResult(intent, PICK_ZIP);
+        graphicsPreset = new Spinner(this);
+        graphicsPreset.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+            new String[]{"Low (phone)", "Engine default", "Max"}));
+        graphicsPreset.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
+                if (loadingGraphics) return;
+                applyPreset(position);
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
-        column.addView(importButton);
-        // Not everyone has the game data as a ZIP. A folder that already holds
-        // data/ and b/<build>/ works just as well, and is used where it lies, so
-        // nothing is copied and the phone needs no free space for it.
-        Button folderButton = new Button(this);
-        folderButton.setText("Use a game files folder");
-        folderButton.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-            // DocumentsUI opens at the last place used unless it is told where to
-            // start, so the default game folder is offered explicitly.
-            intent.putExtra("android.provider.extra.INITIAL_URI", folderUri(DEFAULT_GAME_FOLDER));
-            startActivityForResult(intent, PICK_FOLDER);
+        column.addView(graphicsPreset);
+        graphicsSpinners = new Spinner[GRAPHICS.length];
+        for (int i = 0; i < GRAPHICS.length; i++) {
+            TextView label = new TextView(this);
+            label.setText(GRAPHICS[i][0]);
+            column.addView(label);
+            Spinner spinner = new Spinner(this);
+            spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, DISPLAY[i]));
+            final int index = i;
+            spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
+                    if (loadingGraphics) return;
+                    graphicsPreset.setSelection(1);
+                    saveGraphics();
+                }
+                @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            });
+            graphicsSpinners[i] = spinner;
+            column.addView(spinner);
+        }
+    }
+
+    // The launcher owns the frame limit and the start mode, and the graphics knobs
+    // ride along as engine arguments rather than save-file edits, because the
+    // engine rewrites its own settings on every save.
+    private void saveGraphics() {
+        JSONArray extra = new JSONArray();
+        for (int i = 0; i < GRAPHICS.length; i++) {
+            int position = graphicsSpinners[i].getSelectedItemPosition();
+            if (position == 0) continue;
+            extra.put(GRAPHICS[i][1] + "=" + GRAPHICS[i][2 + position]);
+        }
+        settings.put("extra_args", extra);
+        saveSettings();
+    }
+
+    private void applyPreset(int which) {
+        if (which < 0 || which >= PRESETS.length) return;
+        loadingGraphics = true;
+        for (int i = 0; i < GRAPHICS.length; i++) {
+            int position = 0;
+            for (int k = 2; k < GRAPHICS[i].length; k++) {
+                if (GRAPHICS[i][k].equals(PRESETS[which][i])) { position = k - 1; break; }
+            }
+            graphicsSpinners[i].setSelection(position);
+        }
+        loadingGraphics = false;
+        saveGraphics();
+    }
+
+    private void buildMultimedia(LinearLayout column) {
+        TextView title = new TextView(this);
+        title.setText("Display and audio");
+        title.setTextSize(18);
+        column.addView(title);
+        scale = new EditText(this);
+        scale.setHint("Render scale, 0.25 to 1.0");
+        scale.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        column.addView(scale);
+        heap = new Spinner(this);
+        heap.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+            new String[]{"1 GB heap", "2 GB heap", "3 GB heap", "4 GB heap", "5 GB heap", "6 GB heap", "7 GB heap", "8 GB heap"}));
+        column.addView(heap);
+        mode = new Spinner(this);
+        mode.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+            new String[]{"Story mode", "Sandbox"}));
+        column.addView(mode);
+        mute = new CheckBox(this);
+        mute.setText("Mute audio");
+        column.addView(mute);
+        cpuBc = new CheckBox(this);
+        cpuBc.setText("Decode BC textures on CPU");
+        column.addView(cpuBc);
+        softwareClip = new CheckBox(this);
+        softwareClip.setText("Force software clip distances");
+        column.addView(softwareClip);
+    }
+
+    private void buildMultiplayer(LinearLayout column) {
+        TextView title = new TextView(this);
+        title.setText("Multiplayer");
+        title.setTextSize(18);
+        column.addView(title);
+        multiplayer = new CheckBox(this);
+        multiplayer.setText("Enable multiplayer, join a relay room");
+        column.addView(multiplayer);
+        relayUrl = new EditText(this);
+        relayUrl.setHint("Relay address, ws://host:8012/relay");
+        column.addView(relayUrl);
+        relayRoom = new EditText(this);
+        relayRoom.setHint("Room name");
+        column.addView(relayRoom);
+        relayKey = new EditText(this);
+        relayKey.setHint("Access code");
+        column.addView(relayKey);
+        name = new EditText(this);
+        name.setHint("Player name");
+        column.addView(name);
+    }
+
+    private void buildTouch(LinearLayout column) {
+        TextView title = new TextView(this);
+        title.setText("Touch controls");
+        title.setTextSize(18);
+        column.addView(title);
+        sensitivityLabel = new TextView(this);
+        column.addView(sensitivityLabel);
+        sensitivity = new SeekBar(this);
+        sensitivity.setMax(15);
+        sensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                sensitivityLabel.setText("Look sensitivity: " + LookSensitivity.fromSlider(progress) + "x");
+                if (fromUser) saveTouch(false);
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
         });
-        column.addView(folderButton);
-        // The release instructions name this folder, so offer it directly rather
-        // than making the user find it in the system tree.
-        Button defaultFolderButton = new Button(this);
-        defaultFolderButton.setText("Use " + DEFAULT_GAME_FOLDER);
-        defaultFolderButton.setOnClickListener(v -> useFolder(DEFAULT_GAME_FOLDER));
-        column.addView(defaultFolderButton);
-        folderStatus = new TextView(this);
-        column.addView(folderStatus);
-        clearFolderButton = new Button(this);
-        clearFolderButton.setText("Go back to the imported copy");
-        clearFolderButton.setOnClickListener(v -> { settings.remove("game_folder_uri"); settings.remove("game_folder_path"); saveSettings(); showFolderStatus(); ready(); });
-        column.addView(clearFolderButton);
-        // A picked /sdcard folder can be stat-ed but not opened while another app
-        // owns the files, and a SAF grant does not change that. All-files access
-        // does, and it is the user's decision, not ours.
-        grantAccessButton = new Button(this);
-        grantAccessButton.setText("Grant file access");
-        grantAccessButton.setVisibility(android.view.View.GONE);
-        grantAccessButton.setOnClickListener(v -> {
-            try {
-                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                    Uri.parse("package:" + getPackageName())));
-            } catch (Exception e) { status.setText("Grant 'All files access' to Grand V Android in Settings > Apps > Special access."); }
-        });
-        column.addView(grantAccessButton);
-        // The engine writes saves into app-private storage (MUGUET_FSROOT), which
-        // no file manager on an unrooted phone can see, so the launcher can move
-        // them in and out through the system picker instead.
-        TextView savesTitle = new TextView(this);
-        savesTitle.setText("Saves");
-        column.addView(savesTitle);
-        savesStatus = new TextView(this);
-        column.addView(savesStatus);
-        Button backupSaves = new Button(this);
-        backupSaves.setText("Export saves to a folder");
-        backupSaves.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            startActivityForResult(intent, PICK_SAVE_ZIP);
-        });
-        column.addView(backupSaves);
-        Button restoreSaves = new Button(this);
-        restoreSaves.setText("Restore saves from a folder");
-        restoreSaves.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivityForResult(intent, PICK_SAVE_LOG);
-        });
-        column.addView(restoreSaves);
-        Button exportLogs = new Button(this);
-        exportLogs.setText("Export logs");
-        exportLogs.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/plain");
-            intent.putExtra(Intent.EXTRA_TITLE, "muguet.log");
-            startActivityForResult(intent, PICK_SAVE_LOG);
-        });
-        column.addView(exportLogs);
-        buildGraphics(column);
-        buildMultimedia(column);
-        buildMultiplayer(column);
-        buildTouch(column);
-        buildLinks(column);
-        restoreSettings();
+        column.addView(sensitivity);
+        Button editor = new Button(this);
+        editor.setText("Edit controls (move, resize, rebind)");
+        editor.setOnClickListener(v -> startActivity(new Intent(this, ControlsActivity.class)));
+        column.addView(editor);
+    }
+
+    // Writes touch_layout.json, which is both the geometry the game draws from and
+    // the look gain the :game process reads before Rust has started.
+    private void saveTouch(boolean rebuild) {
+        try {
+            JSONObject root = new JSONObject();
+            root.put("look", LookSensitivity.fromSlider(sensitivity.getProgress()));
+            root.put("scale", 1.0);
+            root.put("opacity", 1.0);
+            root.put("haptics", true);
+            File file = new File(getFilesDir(), "touch_layout.json");
+            if (file.isFile()) {
+                JSONObject existing = new JSONObject(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+                if (existing.has("buttons")) root.put("buttons", existing.getJSONArray("buttons"));
+                root.put("scale", existing.optDouble("scale", 1.0));
+                root.put("opacity", existing.optDouble("opacity", 1.0));
+                root.put("haptics", existing.optBoolean("haptics", true));
+            }
+            Files.write(file.toPath(), root.toString(2).getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) { error(e); }
+    }
+
+    private void buildLinks(LinearLayout column) {
+        TextView title = new TextView(this);
+        title.setText("About");
+        title.setTextSize(18);
+        column.addView(title);
+        Button issue = new Button(this);
+        issue.setText("Report a bug on GitHub");
+        issue.setOnClickListener(v -> open("https://github.com/bytarch/gta5mobile-android/issues"));
+        column.addView(issue);
+        Button contact = new Button(this);
+        contact.setText("Contact on X");
+        contact.setOnClickListener(v -> open("https://x.com/MikeJohndlvl"));
+        column.addView(contact);
+    }
+
+    private void open(String url) {
+        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+        catch (Exception e) { status.setText(url); }
+    }
+
+    private void restoreSettings() {
+        loadingGraphics = true;
+        try {
+            scale.setText(String.valueOf(settings.optDouble("scale", 0.5)));
+            heap.setSelection((int) Math.max(0, Math.min(7, settings.optLong("android_heap_gb", 5) - 1)));
+            mode.setSelection(settings.optInt("start_mode", 2) == 1 ? 0 : 1);
+            mute.setChecked(settings.optBoolean("mute", false));
+            cpuBc.setChecked(settings.optBoolean("gpu_cpu_bc", false));
+            softwareClip.setChecked(settings.optBoolean("gpu_software_clip", false));
+            multiplayer.setChecked(settings.optBoolean("multiplayer", false));
+            relayUrl.setText(settings.optString("relay_url", ""));
+            relayRoom.setText(settings.optString("relay_room", ""));
+            relayKey.setText(settings.optString("relay_key", ""));
+            name.setText(settings.optString("player_name", ""));
+            sensitivity.setProgress(LookSensitivity.toSlider((float) settings.optDouble("touch_sensitivity", 1.0)));
+            // Graphics: apply the stored engine arguments back onto the spinners.
+            JSONArray extra = settings.optJSONArray("extra_args");
+            if (extra != null) {
+                for (int i = 0; i < GRAPHICS.length; i++) {
+                    for (int k = 0; k < extra.length(); k++) {
+                        String arg = extra.optString(k, "");
+                        if (arg.startsWith(GRAPHICS[i][1] + "=")) {
+                            String value = arg.substring(GRAPHICS[i][1].length() + 1);
+                            for (int p = 2; p < GRAPHICS[i].length; p++) {
+                                if (GRAPHICS[i][p].equals(value)) { graphicsSpinners[i].setSelection(p - 1); break; }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) { error(e); }
+        loadingGraphics = false;
+        showFolderStatus();
+        savesStatus.setText("Saves live in the app's private storage; export them here to keep them.");
+    }
+
+    private void saveSettings() {
+        try {
+            settings.put("scale", Double.parseDouble(scale.getText().toString().trim().replace(',', '.')));
+        } catch (Exception ignored) {}
+        settings.put("android_heap_gb", heap.getSelectedItemPosition() + 1);
+        settings.put("start_mode", mode.getSelectedItemPosition() == 0 ? 1 : 2);
+        settings.put("mute", mute.isChecked());
+        settings.put("gpu_cpu_bc", cpuBc.isChecked());
+        settings.put("gpu_software_clip", softwareClip.isChecked());
+        settings.put("multiplayer", multiplayer.isChecked());
+        settings.put("relay_url", relayUrl.getText().toString().trim());
+        settings.put("relay_room", relayRoom.getText().toString().trim());
+        settings.put("relay_key", relayKey.getText().toString());
+        settings.put("player_name", name.getText().toString().trim());
+        settings.put("touch_sensitivity", LookSensitivity.fromSlider(sensitivity.getProgress()));
+        try {
+            File file = new File(getFilesDir(), "config.json");
+            Files.write(file.toPath(), settings.toString(2).getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) { error(e); }
+        saveTouch(false);
+    }
+
+    private void error(Exception e) {
+        status.setText(String.valueOf(e));
+    }
+
+    private JSONObject loadSettings() {
+        try {
+            File file = new File(getFilesDir(), "config.json");
+            if (!file.isFile()) return new JSONObject();
+            return new JSONObject(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+        } catch (Exception e) { return new JSONObject(); }
+    }
+
+    // A plain filesystem path adopted as the game folder. Reachable without the
+    // system picker, which is the point: a folder the user already has at a known
+    // place needs no tree grant to be read when the app holds all-files access.
+    private void useFolder(String path) {
+        String root = gameRoot(path);
+        if (root == null) {
+            status.setText(StoragePaths.isReadableDir(path)
+                ? "No game data in " + path + " - expected data/ and b/<build>/ inside it."
+                : "Cannot read " + path + ". Grant file access, or import a ZIP.");
+            return;
+        }
+        settings.remove("game_folder_uri");
+        settings.put("game_folder_path", root);
+        saveSettings();
+        showFolderStatus();
         ready();
     }
-
-    // Everything below is the original file's own build* helpers, restoreSettings,
-    // ready(), the import worker, the save backup and the picker results. They are
-    // unchanged; only the folder pick goes through StoragePaths now.
-
-    private static native String nativePlaceholder();
 }
