@@ -8,8 +8,7 @@ use std::path::{Path, PathBuf};
 #[cfg_attr(target_os = "ios", allow(dead_code))]
 pub struct Startup {
     pub wasm_path: PathBuf,
-    pub cache_dir: PathBuf,
-
+    pub cache_path: PathBuf,
     pub engine_args: Vec<String>,
 }
 
@@ -35,11 +34,11 @@ fn support_dir() -> PathBuf {
     return PathBuf::from(std::env::var_os("MUGUET_SUPPORT").expect("Android data directory not initialized"));
     #[cfg(not(target_os = "android"))]
     {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    if cfg!(target_os = "ios") {
-        return PathBuf::from(home).join("Documents");
-    }
-    PathBuf::from(home).join("Library/Application Support/Muguet")
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+        if cfg!(target_os = "ios") {
+            return PathBuf::from(home).join("Documents");
+        }
+        PathBuf::from(home).join("Library/Application Support/Muguet")
     }
 }
 
@@ -50,9 +49,8 @@ fn readable(dir: &Path) -> bool {
     std::fs::File::open(dir.join("data/manifest.json")).is_ok()
 }
 
-// Reports exactly what is missing from a folder the user picked, so the launcher
-// can say "this is not a game folder" instead of failing later inside the engine.
-// Returns Ok with the resolved game root, or Err with a message naming the gap.
+/// Reports exactly what is missing from a folder the user picked, so the launcher
+/// can say "this is not a game folder" instead of failing later inside the engine.
 pub fn validate_game_root(start: &Path) -> Result<PathBuf, String> {
     let root = find_game_root(start).ok_or_else(|| {
         format!(
@@ -61,27 +59,20 @@ pub fn validate_game_root(start: &Path) -> Result<PathBuf, String> {
         )
     })?;
     if !root.join("data/manifest.json").is_file() {
-        return Err(format!(
-            "{} has no data/manifest.json",
-            root.display()
-        ));
+        return Err(format!("{} has no data/manifest.json", root.display()));
     }
-    if build_dir(&root).is_none() {
+    let Some(build) = build_dir(&root) else {
         return Err(format!(
             "{} has no usable b/<build>/shaders/index.json",
             root.display()
         ));
-    }
+    };
     #[cfg(feature = "jit")]
-    if !crate::code_embedded() {
-        let has_wasm = build_dir(&root).is_some_and(|b| b.join("game.wasm").is_file());
-        if !has_wasm {
-            return Err(format!(
-                "{} has no b/<build>/game.wasm",
-                root.display()
-            ));
-        }
+    if !crate::code_embedded() && !build.join("game.wasm").is_file() {
+        return Err(format!("{} has no b/<build>/game.wasm", build.display()));
     }
+    #[cfg(not(feature = "jit"))]
+    let _ = build;
     Ok(root)
 }
 
@@ -92,8 +83,6 @@ pub fn validate_game_root(start: &Path) -> Result<PathBuf, String> {
 // path. The search is shallow and bounded - it never walks the game tree.
 const ROOT_SEARCH_DEPTH: usize = 4;
 const ROOT_SEARCH_DIRS: usize = 512;
-// Folders that hold game files rather than lead to the game. Descending into
-// them would walk thousands of entries looking for a root that is not there.
 const CONTENT_DIRS: &[&str] = &[
     "data", "b", "shaders", "x64", "common", "title", "vendor", "home", "proc", "tmp", "dev",
     "userdata", "_mods", "_movie", "_map_support", "branding", "touch_art",
@@ -174,4 +163,10 @@ pub fn bundled_resources() -> Option<PathBuf> {
 
 fn build_dir(root: &Path) -> Option<PathBuf> {
     std::fs::read_dir(root.join("b")).ok()?.flatten().map(|e| e.path()).find(|p| p.join("shaders/index.json").exists())
+}
+
+fn set_default(key: &str, value: impl AsRef<std::ffi::OsStr>) {
+    if std::env::var_os(key).is_none() {
+        std::env::set_var(key, value);
+    }
 }
